@@ -130,14 +130,14 @@ export default function ImageGallery() {
   const [largeImageALT, setLargeImageALT] = useState('');
   const [scroll, setScroll] = useState(false);
 
-  useEffect(prevState => {
-    if (searchQuery !== prevState.searchQuery) {
-      fetchImages();
-    }
-  });
+  useEffect(() => {
+    fetchImages();
+  }, [searchQuery]);
 
   const onChangeQuery = query => {
     setSearchQuery(query);
+    setCurrentPage(1);
+    setHits([]);
   };
 
   const fetchImages = () => {
@@ -146,7 +146,27 @@ export default function ImageGallery() {
       currentPage,
       perPage,
     };
+    setIsLoading(true);
+
+    imagesApi
+      .fetchImages(options)
+      .then(hits => {
+        setHits(prevHits => [...prevHits, ...hits]);
+        setCurrentPage(prevCurrentPage => prevCurrentPage + 1);
+        setScroll(true);
+      })
+      .catch(error => setError({ error }))
+      .finally(setIsLoading(false));
   };
+
+  const toggleModal = (url, alt) => {
+    setShowModal(!showModal);
+    setLargeImageURL(url);
+    setLargeImageALT(alt);
+  };
+
+  const shouldRenderLoadMoreBtn = hits.length > 0 && !isLoading;
+
   return (
     <>
       <Searchbar onSubmit={onChangeQuery} />
@@ -158,7 +178,7 @@ export default function ImageGallery() {
               img={item.webformatURL}
               alt={item.tags}
               key={item.id}
-              onClick={() => this.toggleModal(item.largeImageURL, item.tags)}
+              onClick={() => toggleModal(item.largeImageURL, item.tags)}
             />
           ))}
         </ul>
@@ -171,7 +191,7 @@ export default function ImageGallery() {
         {shouldRenderLoadMoreBtn && <Button onClick={fetchImages} />}
       </Container>
       {showModal && (
-        <Modal onClose={this.toggleModal}>
+        <Modal onClose={toggleModal}>
           <img src={largeImageURL} alt={largeImageALT} />
         </Modal>
       )}
